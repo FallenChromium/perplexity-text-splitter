@@ -18,9 +18,10 @@ class Document(SQLModel, table=True):
     filename: str = Field(index=True)
     s3_key: str = Field(unique=True)
     mime_type: str
+    content: Optional[str] = Field(default=None)
     content_type: ContentType = Field(default=ContentType.TEXT)
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    chunk_metadata: dict = Field(sa_column=Column(JSON), default={})
+    doc_metadata: dict = Field(sa_column=Column(JSON), default={})
     
     # Relationships
     chunks: List["TextChunk"] = Relationship(back_populates="document")

@@ -1,6 +1,6 @@
 
 from typing import Protocol
-
+from models import Document
 
 class DocumentPreprocessor(Protocol):
     """Protocol for document parsers that convert different file formats to markdown"""
@@ -8,6 +8,6 @@ class DocumentPreprocessor(Protocol):
         """Check if this parser can handle the given markdown text"""
         ...
     
-    def preprocess(self, content: str) -> str:
+    def preprocess(self, content: Document) -> str:
         """Convert document content to markdown format"""
         ...

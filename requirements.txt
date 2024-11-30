@@ -9,4 +9,4 @@ markdown==3.7
 pydantic==2.10.2
 python-dotenv==1.0.1
 nltk==3.9.1
-transformers[torch]==4.35.2
+transformers[torch]==4.46.3

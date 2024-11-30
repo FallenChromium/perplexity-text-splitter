@@ -1,5 +1,4 @@
 from fastapi import FastAPI, UploadFile, HTTPException, Depends
-from sqlalchemy import text
 from sqlmodel import Session, SQLModel, create_engine
 
 from config import POSTGRES_USER, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PASSWORD
@@ -38,7 +37,7 @@ def get_session():
     with Session(engine) as session:
         yield session
 
-@app.post("/documents/", response_model=Document)
+@app.post("/documents/", response_model=int)
 async def upload_document(
     file: UploadFile,
     session: Session = Depends(get_session)
@@ -57,7 +56,7 @@ async def upload_document(
         session.commit()
         session.refresh(document)
         
-        return document
+        return document.id
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -72,6 +71,28 @@ async def get_document(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     return document
+
+@app.post("/documents/{document_id}/process", response_model=bool)
+async def process_document(
+    document_id: int,
+    session: Session = Depends(get_session)
+):
+    """Process a document and store chunks"""
+    document = session.get(Document, document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    # Download document from storage
+    session.get(Document, document_id)
+
+    document = await doc_processor.process_document(document)
+
+    # Store in database
+    session.add(document)
+    session.commit()
+    session.refresh(document)
+
+    # TODO: Handle errors
+    return True
 
 @app.get("/documents/{document_id}/chunks", response_model=List[TextChunk])
 async def get_document_chunks(
