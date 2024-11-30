@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple
-from app.services.chunker.ppl_chunking import llm_chunker_ppl
+from .ppl_chunking import llm_chunker_ppl
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
