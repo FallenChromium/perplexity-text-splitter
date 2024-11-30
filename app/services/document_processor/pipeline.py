@@ -1,10 +1,10 @@
 from typing import BinaryIO, List
 
-from app.services.chunker.chunkers import BaseTextChunker
-from app.services.document_processor.parsing import DocumentParser
-from app.services.document_processor.preprocessing import DocumentPreprocessor
-from app.services.document_processor.storage import StorageBackend
-from ...models import Document, TextChunk, ContentType, ChunkType
+from services.chunker.chunkers import BaseTextChunker
+from services.document_processor.parsing import DocumentParser
+from services.document_processor.preprocessing import DocumentPreprocessor
+from services.document_processor.storage import StorageBackend
+from models import Document, TextChunk, ContentType, ChunkType
 from pathlib import Path
 
 

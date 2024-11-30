@@ -10,7 +10,7 @@ class BaseTextChunker(ABC):
         pass
 
 class PerplexityBasedChunker(BaseTextChunker):
-    def __init__(self, scorer):
+    def __init__(self, scorer = None):
         self.scorer = scorer
     
     def split(self, text: str, min_chunk_size: int = 100) -> List[Tuple[str, int, int]]:

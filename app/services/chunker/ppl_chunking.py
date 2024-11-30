@@ -1,9 +1,7 @@
 from ppl_caclucate import Chunking
 from typing import List, Dict
-import re
 import math 
 from nltk.tokenize import sent_tokenize
-# import jieba 
 import torch
 import time
 
@@ -18,19 +16,9 @@ def split_text_by_punctuation(text, language):
     Returns:
         list: List of sentences with length constraints applied
     """
-    # Chinese processing code commented out...
     full_segments = sent_tokenize(text, language)
     ret = []
-    for item in full_segments:
-        item_l = item.strip().split(' ')
-        # Limit long sentences to prevent processing issues
-        if len(item_l) > 512:
-            if len(item_l) > 1024:
-                item = ' '.join(item_l[:256]) + "..."
-            else:
-                item = ' '.join(item_l[:512]) + "..."
-        ret.append(item)
-    return ret
+    return [item.strip().split(' ') for item in full_segments]
 
 def find_minima(values, threshold):
     """
@@ -98,15 +86,8 @@ def extract_by_html2text_db_chongdie(sub_text, model, tokenizer, threshold, lang
     Returns:
         list: List of chunked text segments
     """
-    temp_para=sub_text
+    cleaned_text=sub_text
 
-    if language=='zh':
-        # text = re.sub(r'[\t\n\r\f\v]', '', temp_para)  
-        # cleaned_text = re.sub(r'  ', '', text)  
-        cleaned_text=temp_para
-    else:
-        cleaned_text=temp_para
- 
     segments = split_text_by_punctuation(cleaned_text,language)
     segments = [item for item in segments if item.strip()]  
     ch=Chunking(model, tokenizer)
