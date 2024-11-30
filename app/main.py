@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, HTTPException, Depends
 from sqlmodel import Session, SQLModel, create_engine
 
-from config import POSTGRES_USER, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PASSWORD
+from config import POSTGRES_USER, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_PASSWORD
 from models import Document, TextChunk
 from services.document_processor import DocumentPipeline, S3StorageBackend, PlainTextParser
 from services.chunker import PerplexityBasedChunker
@@ -13,7 +13,7 @@ app = FastAPI(title="Text Splitter API")
 
 
 # Construct the database connection string
-DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:5432/{POSTGRES_DB}"
+DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
 # Database configuration
 engine = create_engine(DATABASE_URL)
@@ -30,7 +30,7 @@ text_chunker = PerplexityBasedChunker()
 doc_processor = DocumentPipeline(
     storage=storage_backend,
     chunker=text_chunker,
-    parsers=markdown_parser,
+    parsers=None,
 )
 
 def get_session():
@@ -45,7 +45,7 @@ async def upload_document(
     """Upload a document, process it, and store chunks"""
     try:
         # Process document
-        document = await doc_processor.process_document(
+        document = await doc_processor.save_document(
             file.file,
             file.filename,
             file.content_type or "text/plain"

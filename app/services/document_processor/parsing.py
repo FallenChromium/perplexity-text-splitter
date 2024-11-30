@@ -1,9 +1,8 @@
 
-from typing import Protocol
+from abc import ABC
 
 
-class DocumentParser(Protocol):
-    """Protocol for document parsers that convert different file formats to markdown"""
+class DocumentParser(ABC):
     def can_handle(self, mime_type: str) -> bool:
         """Check if this parser can handle the given mime type"""
         ...
