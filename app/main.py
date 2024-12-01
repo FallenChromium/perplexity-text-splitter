@@ -1,10 +1,10 @@
-from services.retriever.retriever import RetrieveRequest, SentenceTransformerRetriever
+from services.retriever.retriever import HypotheticalDocumentRetriever, KeywordRetriever, RetrieveRequest, SentenceTransformerRetriever
 from fastapi import FastAPI, UploadFile, HTTPException, Depends
 from sqlmodel import Session, select, col
 from config import get_session
 
 from config import POSTGRES_USER, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_PASSWORD
-from models import Document, TextChunk
+from models import Document, TextChunk, Summary
 from services.document_processor import DocumentPipeline, S3StorageBackend, PlainTextParser
 from services.chunker import PerplexityBasedChunker
 from services.document_processor.parsing import PlainTextParser, HTMLParser
@@ -25,7 +25,10 @@ doc_processor = DocumentPipeline(
     parsers=[PlainTextParser(), HTMLParser()],
 )
 
-doc_processor.retrievers = SentenceTransformerRetriever(doc_processor.embedder)
+vector_sim_retriever = SentenceTransformerRetriever(doc_processor.embedder)
+summary_retriever = HypotheticalDocumentRetriever(text_chunker.small_model, text_chunker.small_tokenizer, doc_processor.embedder)
+keyword_retriever = KeywordRetriever()
+doc_processor.retrievers = [vector_sim_retriever, summary_retriever, keyword_retriever]
 
 @app.post("/documents/", response_model=int)
 async def upload_document(
@@ -78,24 +81,28 @@ async def process_document(
     # TODO: processing settings object
     session: Session = Depends(get_session)
 ):
-    """Process a document and store chunks"""
     document = session.get(Document, document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
+
+    # Process document
+    document, chunks, summaries = await doc_processor.process_document(document)
     # Delete all existing text chunks associated with the document (no dupes)
-    document, chunks = await doc_processor.process_document(document)
+    session.add(document)
+    session.flush()
+    existing_summaries = session.exec(select(Summary).filter(Summary.document_id == document.id)).all()
+    for summary in existing_summaries:
+        session.delete(summary)
     existing_chunks = session.exec(select(TextChunk).filter(TextChunk.document_id == document.id)).all()
     for chunk in existing_chunks:
         session.delete(chunk)
-    session.flush()
-
+    # Store everything
     for chunk in chunks:
         session.add(chunk)
-    # Store in database
-    session.add(document)
-    session.flush()
+    for summary in summaries:
+        session.add(summary)
     session.commit()
-
+    
     return True
 
 @app.get("/documents/{document_id}/chunks", response_model=List[Tuple[str, int, int]])

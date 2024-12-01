@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlalchemy import Column, JSON, ARRAY, Integer
+from sqlalchemy import Column, JSON, ARRAY, Integer, String, Index
 from sqlmodel import SQLModel, Field, Relationship
 from pgvector.sqlalchemy import Vector
 from datetime import datetime
@@ -45,3 +45,22 @@ class TextChunk(SQLModel, table=True):
 
     class Config:
         arbitrary_types_allowed = True
+
+class Summary(SQLModel, table=True):
+    __tablename__ = "summaries"
+    
+    id: Optional[int] = Field(default=None, primary_key=True)
+    document_id: int = Field(foreign_key="documents.id")
+    content: str  # The summary text
+    keywords: List[str] = Field(sa_column=Column(ARRAY(String)))
+    embedding: List[float] = Field(sa_column=Column(Vector(1024)))
+    chunk_ids: List[int] = Field(sa_column=Column(ARRAY(Integer)))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    summary_metadata: dict = Field(sa_column=Column(JSON), default={})
+    __table_args__ = (
+        Index(
+            'idx_summaries_keywords',
+            'keywords',
+            postgresql_using='gin'
+        ),
+    )

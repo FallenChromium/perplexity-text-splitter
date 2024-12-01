@@ -7,7 +7,7 @@ from services.document_processor.parsing import DocumentParser
 from services.document_processor.preprocessing import DocumentPreprocessor
 from services.document_processor.storage import StorageBackend
 from services.retriever.embedder import BaseEmbedder
-from models import Document, TextChunk, ContentType, ChunkType
+from models import Document, TextChunk, ContentType, ChunkType, Summary
 from pathlib import Path
 
 text_mimetypes = [
@@ -52,7 +52,7 @@ class DocumentPipeline:
 
         return document
 
-    async def process_document(self, document: Document, embed_model: BaseEmbedder = None) -> Document:
+    async def process_document(self, document: Document, embed_model: BaseEmbedder = None) -> Tuple[Document, List[TextChunk], List[Summary]]:
         embedder = embed_model or self.embedder
         doc = document
         if not doc.content:
@@ -91,7 +91,6 @@ class DocumentPipeline:
         chunks = zip(chunks, embeddings)
         final_chunks = []
         for chunk, embedding in chunks:
-            print(chunk)
             chunk_text, start_pos, end_pos = chunk
             chunk_obj = TextChunk(
                 document_id = doc.id,
@@ -104,16 +103,23 @@ class DocumentPipeline:
             )
             final_chunks.append(chunk_obj)
 
+        # Create summaries
+        summaries = await self.chunker.create_summaries(final_chunks, doc.id)
 
-        return doc, final_chunks
-    
+        # Embed summaries
+        for summary in summaries:
+            summary.embedding = embedder.embed(summary.content).tolist()
+
+        return doc, final_chunks, summaries
+  
+
     async def retrieve_chunks(self, settings: RetrieveRequest) -> List[Tuple[str, float]]:
         if isinstance(self.retrievers, list):
             results = {}
             for retriever in self.retrievers:
                 # TODO: conditional continuation of retrieval if confidence is low
                 res = retriever.retrieve(settings)
-                results.update({k: results[k]+v for k, v in res})
+                results.update({k: results.get(k, 0)+v for k, v in res})
             results.update({key: value/len(self.retrievers) for key, value in results.items()})
             # sort by confidence and return as list
             return sorted(tuple(results.items()), key=lambda x: x[1], reverse=True)
