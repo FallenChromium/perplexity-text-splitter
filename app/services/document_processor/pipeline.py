@@ -1,6 +1,6 @@
 from typing import BinaryIO, List, Tuple
 
-from app.services.retriever.retriever import BaseRetriever, RetrieveRequest
+from services.retriever.retriever import BaseRetriever, RetrieveRequest
 from services.retriever.embedder import SentenceTransformerEmbedder
 from services.chunker.chunkers import BaseTextChunker
 from services.document_processor.parsing import DocumentParser

@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple
-from app.models import TextChunk
-from app.services.retriever.embedder import BaseEmbedder
+from models import TextChunk
+from services.retriever.embedder import BaseEmbedder
 from pydantic import BaseModel
-from app.config import get_session
+from config import get_session
 from sqlmodel import select, col
 
 class RetrieveRequest(BaseModel):

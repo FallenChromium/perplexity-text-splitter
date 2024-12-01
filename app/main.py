@@ -1,4 +1,4 @@
-from app.services.retriever.retriever import RetrieveRequest, SentenceTransformerRetriever
+from services.retriever.retriever import RetrieveRequest, SentenceTransformerRetriever
 from fastapi import FastAPI, UploadFile, HTTPException, Depends
 from sqlmodel import Session, select, col
 from config import get_session
@@ -23,10 +23,9 @@ doc_processor = DocumentPipeline(
     storage=storage_backend,
     chunker=text_chunker,
     parsers=[PlainTextParser(), HTMLParser()],
-    retrievers=[SentenceTransformerRetriever()]
 )
 
-
+doc_processor.retrievers = SentenceTransformerRetriever(doc_processor.embedder)
 
 @app.post("/documents/", response_model=int)
 async def upload_document(

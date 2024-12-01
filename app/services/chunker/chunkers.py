@@ -19,7 +19,7 @@ class BaseTextChunker(ABC):
 class PerplexityBasedChunker(BaseTextChunker):
     def __init__(
         self,
-        model_name: str = "Vikhrmodels/Vikhr-Qwen-2.5-1.5B-Instruct",
+        model_name: str = "Vikhrmodels/Vikhr-Qwen-2.5-0.5B-Instruct",
         dynamic_merge: str = "yes",
         threshold: float = 0.2,
     ):
