@@ -40,7 +40,7 @@ class PerplexityBasedChunker(BaseTextChunker):
             text,
             self.small_model,
             self.small_tokenizer,
-            self.threshold,
+            min(1, max(0.15, min_chunk_size / 1000)),
             # TODO language recognition?
             "russian",
             dynamic_merge=self.dynamic_merge,
