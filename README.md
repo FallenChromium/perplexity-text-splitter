@@ -6,6 +6,15 @@
 - PyTorch 2.0+
 
 ## Installation
+### Create virtual enviroment and activate it
+```sh
+python3 -m venv venv
+# venv activation on linux
+source venv/bin/activate
+# venv activation on windows
+venv\Scripts\activate
+```
+### Install dependencies
 ```sh
 copy .env.example .env
 # pytorch with cuda support if you have an Nvidia GPU and CUDA
@@ -26,7 +35,7 @@ docker compose up
 ![](/assets/start_4.png)
 1. Paste key into .env into field ```AWS_ACCESS_KEY_SECRET```
 ### Postgresql manual configuration
-1. Connect to pg ```jpsql -h localhost -p 5432 -U user -d vectordb```, default password is ```password```
+1. Connect to pg ```psql -h localhost -p 5432 -U user -d vectordb```, default password is ```password```
 1. Execute ```"CREATE EXTENSION vector;"```
 ### Manually downloading nltk wordlists
 1. Enter python executing ```python```
