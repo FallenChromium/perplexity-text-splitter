@@ -11,5 +11,5 @@ python-dotenv==1.0.1
 nltk==3.9.1
 transformers[torch]==4.46.3
 sentence-transformers==3.3.1
-markdownify==0.14.1
+html2text==2024.2.26
 yake==0.4.4

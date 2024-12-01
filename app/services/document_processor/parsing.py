@@ -1,6 +1,6 @@
 
 from abc import ABC
-from markdownify import markdownify as md
+import html2text
 
 
 class DocumentParser(ABC):
@@ -20,8 +20,12 @@ class PlainTextParser(DocumentParser):
         return content.decode('utf-8')
     
 class HTMLParser(DocumentParser):
+    def __init__(self):
+        self.h = html2text.HTML2Text()
+        # Ignore converting links from HTML
+        self.h.ignore_links = True
     def can_handle(self, mime_type: str) -> bool:
         return mime_type in ["text/html"]
     
     def parse_to_markdown(self, content: bytes, mime_type: str) -> str:
-        return md(content.decode('utf-8'))
+        return self.h.handle(content.decode('utf-8'))
