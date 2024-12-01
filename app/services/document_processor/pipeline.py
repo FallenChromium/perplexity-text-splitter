@@ -1,5 +1,6 @@
-from typing import BinaryIO, List
+from typing import BinaryIO, List, Tuple
 
+from app.services.retriever.retriever import BaseRetriever, RetrieveRequest
 from services.retriever.embedder import SentenceTransformerEmbedder
 from services.chunker.chunkers import BaseTextChunker
 from services.document_processor.parsing import DocumentParser
@@ -23,12 +24,15 @@ class DocumentPipeline:
         chunker: BaseTextChunker,
         parsers: List[DocumentParser] | DocumentParser | None = None,
         preprocess: List[DocumentPreprocessor] | DocumentPreprocessor | None = None,
+        retrievers: List[BaseRetriever] | BaseRetriever | None = None,
+        embedder: BaseEmbedder = SentenceTransformerEmbedder(),
     ):
         self.storage = storage
         self.parsers: List[DocumentParser] | DocumentParser | None = parsers
         self.preprocess = preprocess
         self.chunker = chunker
-        self.embedder: BaseEmbedder = SentenceTransformerEmbedder()
+        self.retrievers: BaseRetriever = retrievers
+        self.embedder: BaseEmbedder = embedder
 
     async def save_document(
         self, file: BinaryIO, filename: str, mime_type: str
@@ -102,3 +106,18 @@ class DocumentPipeline:
 
 
         return doc, final_chunks
+    
+    async def retrieve_chunks(self, settings: RetrieveRequest) -> List[Tuple[str, float]]:
+        if isinstance(self.retrievers, list):
+            results = {}
+            for retriever in self.retrievers:
+                # TODO: conditional continuation of retrieval if confidence is low
+                res = retriever.retrieve(settings)
+                results.update({k: results[k]+v for k, v in res})
+            results.update({key: value/len(self.retrievers) for key, value in results.items()})
+            # sort by confidence and return as list
+            return sorted(tuple(results.items()), key=lambda x: x[1], reverse=True)
+        elif isinstance(self.retrievers, BaseRetriever):
+            return self.retrievers.retrieve(settings)
+        else:
+            raise Exception("No retriever found")

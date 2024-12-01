@@ -1,5 +1,7 @@
+from app.services.retriever.retriever import RetrieveRequest, SentenceTransformerRetriever
 from fastapi import FastAPI, UploadFile, HTTPException, Depends
-from sqlmodel import Session, SQLModel, create_engine, select, col
+from sqlmodel import Session, select, col
+from config import get_session
 
 from config import POSTGRES_USER, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_PASSWORD
 from models import Document, TextChunk
@@ -10,17 +12,6 @@ import os
 from typing import List, Optional, Tuple
 
 app = FastAPI(title="Text Splitter API")
-# Read environment variables from .env file
-
-
-# Construct the database connection string
-DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-
-# Database configuration
-engine = create_engine(DATABASE_URL)
-
-# Create tables
-SQLModel.metadata.create_all(engine)
 
 # Initialize document processor components
 storage_backend = S3StorageBackend()
@@ -32,11 +23,10 @@ doc_processor = DocumentPipeline(
     storage=storage_backend,
     chunker=text_chunker,
     parsers=[PlainTextParser(), HTMLParser()],
+    retrievers=[SentenceTransformerRetriever()]
 )
 
-def get_session():
-    with Session(engine) as session:
-        yield session
+
 
 @app.post("/documents/", response_model=int)
 async def upload_document(
@@ -121,20 +111,9 @@ async def get_document_chunks(
         raise HTTPException(status_code=404, detail="Chunks not found")
     return [(chunk.content, chunk.start_pos, chunk.end_pos) for chunk in chunks]
 
-@app.get("/retrieve", response_model=List[Tuple[str, float]])
+@app.post("/retrieve", response_model=List[Tuple[str, float]])
 async def get_relevant_chunks(
-    query: str,
-    document_whitelist: Optional[List[int]] = None,
-    top_k: int = 10,
-    session: Session = Depends(get_session)
+    settings: RetrieveRequest,
 ):
-    query_embedding = doc_processor.embedder.embed(query)
-    sql_query = select(TextChunk)
-    
-    chunks = []
-    if document_whitelist:
-        sql_query = sql_query.filter(col(TextChunk.document_id).in_(document_whitelist))
-    sql_query = sql_query.order_by(TextChunk.embedding.l2_distance(query_embedding)).limit(top_k)
-    results = session.exec(sql_query).all()
-    # todo: add cosine similarity as measure of confidence
-    return [(result.content, 1.0) for result in results]
+    results = await doc_processor.retrieve_chunks(settings)
+    return results
