@@ -51,7 +51,6 @@ async def upload_document(
             file.filename,
             file.content_type or "text/plain"
         )
-        
         # Store in database
         session.add(document)
         session.commit()
@@ -94,30 +93,35 @@ async def process_document(
     document = session.get(Document, document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
-    # Download document from storage
-    session.get(Document, document_id)
+    # Delete all existing text chunks associated with the document (no dupes)
+    document, chunks = await doc_processor.process_document(document)
+    existing_chunks = session.exec(select(TextChunk).filter(TextChunk.document_id == document.id)).all()
+    for chunk in existing_chunks:
+        session.delete(chunk)
+    session.flush()
 
-    document = await doc_processor.process_document(document)
-
+    for chunk in chunks:
+        session.add(chunk)
     # Store in database
     session.add(document)
+    session.flush()
     session.commit()
-    session.refresh(document)
 
     return True
 
-@app.get("/documents/{document_id}/chunks", response_model=List[TextChunk])
+@app.get("/documents/{document_id}/chunks", response_model=List[Tuple[str, int, int]])
 async def get_document_chunks(
     document_id: int,
     session: Session = Depends(get_session)
 ):
     """Get all chunks for a document"""
-    document = session.get(Document, document_id)
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
-    return document.chunks 
+    sql_query = select(TextChunk).filter(col(TextChunk.document_id) == document_id)
+    chunks = session.exec(sql_query).all()
+    if not chunks:
+        raise HTTPException(status_code=404, detail="Chunks not found")
+    return [(chunk.content, chunk.start_pos, chunk.end_pos) for chunk in chunks]
 
-@app.get("/retrieve", response_model=List[Tuple[TextChunk, float]])
+@app.get("/retrieve", response_model=List[Tuple[str, float]])
 async def get_relevant_chunks(
     query: str,
     document_whitelist: Optional[List[int]] = None,
@@ -125,12 +129,12 @@ async def get_relevant_chunks(
     session: Session = Depends(get_session)
 ):
     query_embedding = doc_processor.embedder.embed(query)
-    query = select(TextChunk)
+    sql_query = select(TextChunk)
     
     chunks = []
     if document_whitelist:
-        query = query.filter(col(TextChunk.document_id).in_(document_whitelist))
-    query = query.order_by(TextChunk.embedding.l2_distance(query_embedding)).limit(top_k)
-    results = session.exec(query)
-        
-    return results
+        sql_query = sql_query.filter(col(TextChunk.document_id).in_(document_whitelist))
+    sql_query = sql_query.order_by(TextChunk.embedding.l2_distance(query_embedding)).limit(top_k)
+    results = session.exec(sql_query).all()
+    # todo: add cosine similarity as measure of confidence
+    return [(result.content, 1.0) for result in results]

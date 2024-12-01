@@ -46,6 +46,8 @@ class HuggingFaceEmbedder(BaseEmbedder):
 class SentenceTransformerEmbedder(BaseEmbedder):
     def __init__(self, model_name: str = "BAAI/bge-m3"):
         self.model = SentenceTransformer(model_name)
+        self.model_name = model_name
+
 
     def embed(self, text: str) -> np.ndarray:
         return self.model.encode(text, normalize_embeddings=True)

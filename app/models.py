@@ -23,8 +23,6 @@ class Document(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     doc_metadata: dict = Field(sa_column=Column(JSON), default={})
     
-    # Relationships
-    chunks: List["TextChunk"] = Relationship(back_populates="document")
 
 class ChunkType(str, Enum):
     TEXT = "text"
@@ -40,13 +38,10 @@ class TextChunk(SQLModel, table=True):
     chunk_type: ChunkType = Field(default=ChunkType.TEXT)
     start_pos: int  # Position in original document
     end_pos: int
-    embedding: List[float] = Field(default=None, sa_column=Column(Vector(1536)))       
+    embedding: List[float] = Field(default=None, sa_column=Column(Vector(1024))) #TODO: actually depends on the embedding model, should be configurable       
     # Metadata fields
     related_chunk_ids: List[int] = Field(sa_column=Column(ARRAY(Integer)), default=[])
     chunk_metadata: dict = Field(sa_column=Column(JSON), default={})
-    
-    # Relationships
-    document: Document = Relationship(back_populates="chunks")
 
     class Config:
         arbitrary_types_allowed = True

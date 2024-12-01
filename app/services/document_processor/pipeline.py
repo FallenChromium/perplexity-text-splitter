@@ -51,8 +51,8 @@ class DocumentPipeline:
     async def process_document(self, document: Document, embed_model: BaseEmbedder = None) -> Document:
         embedder = embed_model or self.embedder
         doc = document
-        if not document.content:
-            doc_file: bytes = await self.storage.get_document(document.s3_key)
+        if not doc.content:
+            doc_file: bytes = await self.storage.get_document(doc.s3_key)
             content = doc_file
 
             mime_type: str = doc.mime_type
@@ -83,19 +83,22 @@ class DocumentPipeline:
         chunks = self.chunker.split(markdown_text)
         # TODO: linked chunks
         # Create chunk instances
-        document.chunks = []
         embeddings = embedder.embed_batch([chunk[0] for chunk in chunks])
         chunks = zip(chunks, embeddings)
+        final_chunks = []
         for chunk, embedding in chunks:
+            print(chunk)
             chunk_text, start_pos, end_pos = chunk
             chunk_obj = TextChunk(
+                document_id = doc.id,
                 content=chunk_text,
                 chunk_type=ChunkType.TEXT,
                 start_pos=start_pos,
                 end_pos=end_pos,
-                embedding=embedding.as_list(),
+                embedding=embedding.tolist(),
                 chunk_metadata={"embedder_model_name": embedder.model_name},
             )
-            document.chunks.append(chunk_obj)
+            final_chunks.append(chunk_obj)
 
-        return document
+
+        return doc, final_chunks
