@@ -571,10 +571,14 @@ def llm_chunker_ppl(sub_text, model, tokenizer, threshold, language='zh', batch_
                 start_pos = start_pos + len(current_paragraph)  
                 current_paragraph = paragraph  
         if current_paragraph:  
-            merged_paragraphs.append(current_paragraph)  
+            merged_paragraphs.append((current_paragraph, start_pos, start_pos + len(current_paragraph)))
 
     else:
-        merged_paragraphs = new_final_chunks
+        start_pos = 0
+        merged_paragraphs = []
+        for paragraph in new_final_chunks:
+            merged_paragraphs.append((paragraph, start_pos, start_pos + len(paragraph)))
+            start_pos = start_pos + len(paragraph)
         
     end_time = time.time()  
     execution_time = end_time - start_time  
