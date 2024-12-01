@@ -1,9 +1,11 @@
 from typing import BinaryIO, List
 
+from services.retriever.embedder import SentenceTransformerEmbedder
 from services.chunker.chunkers import BaseTextChunker
 from services.document_processor.parsing import DocumentParser
 from services.document_processor.preprocessing import DocumentPreprocessor
 from services.document_processor.storage import StorageBackend
+from services.retriever.embedder import BaseEmbedder
 from models import Document, TextChunk, ContentType, ChunkType
 from pathlib import Path
 
@@ -26,6 +28,7 @@ class DocumentPipeline:
         self.parsers: List[DocumentParser] | DocumentParser | None = parsers
         self.preprocess = preprocess
         self.chunker = chunker
+        self.embedder: BaseEmbedder = SentenceTransformerEmbedder()
 
     async def save_document(
         self, file: BinaryIO, filename: str, mime_type: str
@@ -45,7 +48,8 @@ class DocumentPipeline:
 
         return document
 
-    async def process_document(self, document: Document) -> Document:
+    async def process_document(self, document: Document, embed_model: BaseEmbedder = None) -> Document:
+        embedder = embed_model or self.embedder
         doc = document
         if not document.content:
             doc_file: bytes = await self.storage.get_document(document.s3_key)
@@ -80,14 +84,18 @@ class DocumentPipeline:
         # TODO: linked chunks
         # Create chunk instances
         document.chunks = []
-        for chunk_text, start_pos, end_pos in chunks:
-            chunk = TextChunk(
+        embeddings = embedder.embed_batch([chunk[0] for chunk in chunks])
+        chunks = zip(chunks, embeddings)
+        for chunk, embedding in chunks:
+            chunk_text, start_pos, end_pos = chunk
+            chunk_obj = TextChunk(
                 content=chunk_text,
                 chunk_type=ChunkType.TEXT,
                 start_pos=start_pos,
                 end_pos=end_pos,
-                metadata={},
+                embedding=embedding.as_list(),
+                chunk_metadata={"embedder_model_name": embedder.model_name},
             )
-            document.chunks.append(chunk)
+            document.chunks.append(chunk_obj)
 
         return document

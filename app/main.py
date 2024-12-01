@@ -1,12 +1,12 @@
 from fastapi import FastAPI, UploadFile, HTTPException, Depends
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select, col
 
 from config import POSTGRES_USER, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_PASSWORD
 from models import Document, TextChunk
 from services.document_processor import DocumentPipeline, S3StorageBackend, PlainTextParser
 from services.chunker import PerplexityBasedChunker
 import os
-from typing import List
+from typing import List, Optional, Tuple
 
 app = FastAPI(title="Text Splitter API")
 # Read environment variables from .env file
@@ -72,9 +72,21 @@ async def get_document(
         raise HTTPException(status_code=404, detail="Document not found")
     return document
 
+@app.get("/documents", response_model=Document)
+async def get_document(
+    document_id: int,
+    session: Session = Depends(get_session)
+):
+    """Get document with its chunks"""
+    documents = Document.query.all()
+    if not documents:
+        raise HTTPException(status_code=404, detail="Documents not found")
+    return documents
+
 @app.post("/documents/{document_id}/process", response_model=bool)
 async def process_document(
     document_id: int,
+    # TODO: processing settings object
     session: Session = Depends(get_session)
 ):
     """Process a document and store chunks"""
@@ -91,7 +103,6 @@ async def process_document(
     session.commit()
     session.refresh(document)
 
-    # TODO: Handle errors
     return True
 
 @app.get("/documents/{document_id}/chunks", response_model=List[TextChunk])
@@ -104,3 +115,21 @@ async def get_document_chunks(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     return document.chunks 
+
+@app.get("/retrieve", response_model=List[Tuple[TextChunk, float]])
+async def get_relevant_chunks(
+    query: str,
+    document_whitelist: Optional[List[int]] = None,
+    top_k: int = 10,
+    session: Session = Depends(get_session)
+):
+    query_embedding = doc_processor.embedder.embed(query)
+    query = select(TextChunk)
+    
+    chunks = []
+    if document_whitelist:
+        query = query.filter(col(TextChunk.document_id).in_(document_whitelist))
+    query = query.order_by(TextChunk.embedding.l2_distance(query_embedding)).limit(top_k)
+    results = session.exec(query)
+        
+    return results
