@@ -17,7 +17,10 @@ def split_text_by_punctuation(text, language):
         list: List of sentences with length constraints applied
     """
     full_segments = sent_tokenize(text, language)
-    return [segment.strip() for segment in full_segments]
+    splitted_segments = []
+    for segment in full_segments:
+        splitted_segments.extend(segment.split('\n'))
+    return splitted_segments
 
 def find_minima(values, threshold):
     """
