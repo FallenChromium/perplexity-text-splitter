@@ -116,10 +116,14 @@ class DocumentPipeline:
     async def retrieve_chunks(self, settings: RetrieveRequest) -> List[Tuple[str, float]]:
         if isinstance(self.retrievers, list):
             results = {}
+            seen_keys = set()
             for retriever in self.retrievers:
                 # TODO: conditional continuation of retrieval if confidence is low
                 res = retriever.retrieve(settings)
-                results.update({k: results.get(k, 0)+v for k, v in res})
+                for k, v in res:
+                    if k not in seen_keys:
+                        results[k] = v  # Add the result for the first time the key is encountered
+                        seen_keys.add(k)
             results.update({key: value/len(self.retrievers) for key, value in results.items()})
             # sort by confidence and return as list
             return sorted(tuple(results.items()), key=lambda x: x[1], reverse=True)
