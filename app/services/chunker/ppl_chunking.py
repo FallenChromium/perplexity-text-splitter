@@ -561,12 +561,14 @@ def llm_chunker_ppl(sub_text, model, tokenizer, threshold, language='zh', batch_
     if dynamic_merge!='no':
         merged_paragraphs = []  
         current_paragraph = new_final_chunks[0] 
+        start_pos = 0
         for paragraph in new_final_chunks[1:]:  
             # Check if adding a new paragraph to the current paragraph exceeds the target size
             if len(current_paragraph) + len(paragraph) <= target_size:  
                 current_paragraph +=' '+paragraph  
             else:  
-                merged_paragraphs.append(current_paragraph)  
+                merged_paragraphs.append((current_paragraph, start_pos, start_pos + len(current_paragraph)))
+                start_pos = start_pos + len(current_paragraph)  
                 current_paragraph = paragraph  
         if current_paragraph:  
             merged_paragraphs.append(current_paragraph)  

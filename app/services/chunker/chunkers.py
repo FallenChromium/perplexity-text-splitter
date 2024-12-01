@@ -48,12 +48,4 @@ class PerplexityBasedChunker(BaseTextChunker):
             batch_size=self.batch_size,
             max_txt_size=self.max_txt_size,
         )
-        to_return = []
-        prev_pos = 0
-        for chunk in chunks:
-            # TODO: use normal not cursed position findings
-            start_pos = text.find(chunk[5:40], prev_pos)
-            prev_pos = start_pos
-            start_pos -= 5
-            to_return.append((chunk, start_pos, start_pos + len(chunk)+1))
-        return to_return
+        return chunks
