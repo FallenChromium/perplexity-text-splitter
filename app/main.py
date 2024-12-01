@@ -5,6 +5,7 @@ from config import POSTGRES_USER, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PORT, POS
 from models import Document, TextChunk
 from services.document_processor import DocumentPipeline, S3StorageBackend, PlainTextParser
 from services.chunker import PerplexityBasedChunker
+from services.document_processor.parsing import PlainTextParser, HTMLParser
 import os
 from typing import List, Optional, Tuple
 
@@ -30,7 +31,7 @@ text_chunker = PerplexityBasedChunker()
 doc_processor = DocumentPipeline(
     storage=storage_backend,
     chunker=text_chunker,
-    parsers=None,
+    parsers=[PlainTextParser(), HTMLParser()],
 )
 
 def get_session():
